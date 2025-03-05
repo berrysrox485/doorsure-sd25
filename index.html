@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DoorSure</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- ufirebase scripts needed -->
+    <script defer src="/__/firebase/11.4.0/firebase-app-compat.js"></script>
+    
+    <script defer src="/__/firebase/11.4.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/11.4.0/firebase-database-compat.js"></script>
+    <script defer src="/__/firebase/11.4.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/11.4.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/11.4.0/firebase-storage-compat.js"></script>
+    <script defer src="/__/firebase/11.4.0/firebase-remote-config-compat.js"></script>
+    <script defer src="/__/firebase/11.4.0/firebase-performance-compat.js"></script>
+
+    <script defer src="functions.js"></script>
+</head>
+
+<body>
+    
+    <h2>Status: <span id="curr_status">Closed</span></h2>
+    <button onclick="openAction()">Open</button>
+    <button onclick="closeAction()">Close</button>
+</body>
+
+</html>
