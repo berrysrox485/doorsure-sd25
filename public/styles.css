@@ -1,13 +1,121 @@
-body {
+/* Poppins Font */
+@font-face {
+    font-family: 'Poppins';
+    font-style: italic;
+    font-weight: 700;
+    font-display: block;
+    src: url(https://design.penpot.app/internal/gfonts/font/poppins/v22/pxiDyp8kv8JHgFVrJJLmy15VF9eO.woff2) format('woff2');
+  }
+  
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  html, body {
+    width: 100%;
+    height: 100%;
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f0f0;
+    color: #333;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+  }
+  
+  /* Main container */
+  .container {
+    width: 90%;
+    max-width: 400px;
+    padding: 5%;
+    background-color: #fff;
+    border: 2px solid #ccc;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  /* Header */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+  
+  .logo-section {
+    display: flex;
     flex-direction: column;
-}
-
-button {
-    margin: 10px;
-    padding: 10px 20px;
-    font-size: 16px;
-}
+    align-items: center;
+  }
+  
+  
+  .logo {
+    height: 50px;
+    width: auto;
+    margin-bottom: 5px;
+  }
+  
+  .app-name {
+    font-size: 1.3em;
+    margin: 0;
+    line-height: 1;
+  }
+  
+  
+  .highlight {
+    color: #268d6e;
+  }
+  
+  .user-section {
+    font-size: 0.9em;
+    text-align: right;
+  }
+  
+  .gear-icon {
+    height: 22px;
+    margin-top: 5px;
+  }
+  
+  /* Status section */
+  .status-label {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+  }
+  
+  .status {
+    margin-bottom: 40px;
+  }
+  
+  .closed-status {
+    font-family: 'Poppins', sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.8em;
+    color: #d83030;
+    text-shadow: 1px 1px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Buttons */
+  .button-group button {
+    display: block;
+    width: 80%;
+    margin: 15px auto;
+    padding: 12px;
+    font-size: 1em;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(to bottom, #efb6b6, #35626c);
+    border: none;
+    border-radius: 25px;
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: 0.2s ease-in-out;
+  }
+  
+  .button-group button:hover {
+    transform: scale(1.05);
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.25);
+  }
+  

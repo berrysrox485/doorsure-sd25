@@ -33,7 +33,7 @@ function closeAction() {
 }
 
 // WebSocket connection setup, with ESP32's IP ADDRESS
-const socket = new WebSocket('ws://192.168.4.96/ws');
+const socket = new WebSocket('ws://192.168.4.96/ws'); // servos IP ADDRESS, change later to grab it from the esp32
 socket.onopen = () => {
   console.log('WebSocket connection established');
 };
@@ -49,6 +49,7 @@ statusRef.on('value', (snapshot) => {
   const status = snapshot.val();
   if (status !== null) {
     updateStatusUI(status);
+    
     // Send signal to ESP32
     if (socket.readyState === WebSocket.OPEN) {
       console.log('Sending status to ESP32:', status === 1 ? 'open' : 'close');
