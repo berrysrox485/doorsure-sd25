@@ -18,10 +18,21 @@ const ipRef = db.ref('servo-ip_address');
 
 let socket = null;
 
-// Update UI with current status
+// update status of door
 function updateStatusUI(value) {
-  document.getElementById("curr_status").textContent = value === 1 ? "Open" : "Closed";
+  const statusDiv = document.getElementById("curr_status");
+  statusDiv.textContent = value === 1 ? "Open" : "Closed";
+
+  // Update styling class
+  if (value === 1) {
+    statusDiv.classList.remove("closed-status");
+    statusDiv.classList.add("open-status");
+  } else {
+    statusDiv.classList.remove("open-status");
+    statusDiv.classList.add("closed-status");
+  }
 }
+
 
 // Control buttons
 function openAction() {
