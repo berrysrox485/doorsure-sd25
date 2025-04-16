@@ -96,6 +96,16 @@
     color: #d83030;
     text-shadow: 1px 1px rgba(0, 0, 0, 0.2);
   }
+
+  .open-status {
+    font-family: 'Poppins', sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.8em;
+    color: #30d85d; 
+    text-shadow: 1px 1px rgba(0, 0, 0, 0.2);
+  }
+  
   
   /* Buttons */
   .button-group button {
