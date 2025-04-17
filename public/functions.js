@@ -95,3 +95,58 @@ statusRef.on("value", (snapshot) => {
 
 document.addEventListener("DOMContentLoaded", () => {
 });
+
+// Modal logic
+const modal = document.getElementById("settingsModal");
+const overlay = document.getElementById("overlay");
+const settingsIcon = document.getElementById("settingsIcon");
+
+settingsIcon.addEventListener("click", () => {
+  modal.style.display = "block";
+  overlay.style.display = "block";
+});
+
+function closeSettings() {
+  modal.style.display = "none";
+  overlay.style.display = "none";
+}
+
+// Firebase listeners (adjust paths as needed)
+const tempSpan = document.getElementById("tempValue");
+const humiditySpan = document.getElementById("humidityValue");
+
+firebase.database().ref("/temperature").on("value", (snapshot) => {
+  const val = snapshot.val();
+  if (val !== null) tempSpan.textContent = val.toFixed(1);
+});
+
+firebase.database().ref("/humidity").on("value", (snapshot) => {
+  const val = snapshot.val();
+  if (val !== null) humiditySpan.textContent = val.toFixed(1);
+});
+
+const gLengthInput = document.getElementById("gLengthInput");
+
+function saveGLength() {
+  const value = parseFloat(gLengthInput.value);
+  if (isNaN(value)) {
+    alert("Please enter a valid number for g_length.");
+    return;
+  }
+
+  firebase.database().ref("/g_length").set(value)
+    .then(() => alert("✅ g_length saved!"))
+    .catch((error) => alert("❌ Failed to save: " + error.message));
+}
+
+// Load g_length when modal opens
+settingsIcon.addEventListener("click", () => {
+  modal.style.display = "block";
+  overlay.style.display = "block";
+
+  firebase.database().ref("/g_length").once("value")
+    .then((snapshot) => {
+      const val = snapshot.val();
+      if (val !== null) gLengthInput.value = val;
+    });
+});
