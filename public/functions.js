@@ -1,4 +1,4 @@
-// Firebase configurations
+/* -------------- Firebase configurations -------------- */
 const firebaseConfig = {
   apiKey: "AIzaSyCB_Gz5ADmjLxxxBYZ0OS7k_C03Wo42xFY",
   authDomain: "doorsure-sd25.firebaseapp.com",
@@ -10,14 +10,37 @@ const firebaseConfig = {
   measurementId: "G-ZWNQT99F1Y",
 };
 
-// Initialize Firebase
+const secondFirebaseConfig = {
+  apiKey: "AIzaSyCjCXahhzsjSH1dmB5F0GGgw6TNTjpwudg",
+  authDomain: "esp32-object-detection-d863a.firebaseapp.com",
+  databaseURL: "https://esp32-object-detection-d863a-default-rtdb.firebaseio.com/",
+  projectId: "esp32-object-detection-d863a",
+  storageBucket: "esp32-object-detection-d863a.appspot.com",
+  messagingSenderId: "572491364622",
+  appId: "1:572491364622:web:5f916612bb18a61a09bf5f",
+  measurementId: "G-F6PY8JMBJB"
+};
+
+/* -------------- Initialise Firebase apps -------------- */
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const db        = firebase.database();
 const statusRef = db.ref("door-status");
 const objectRef = db.ref("obj_obstruction");
-const servoRef = db.ref("servo-move");
+const servoRef  = db.ref("servo-move");
 
-// Update UI with door status
+const secondApp = firebase.initializeApp(secondFirebaseConfig, "secondApp");
+const secondDb  = secondApp.database();
+
+/* -------------- Toast helper -------------------------- */
+function showToast(msg, type = "info", ms = 4000) {
+  const note = document.getElementById("notification");
+  note.textContent = msg;
+  note.className = `notification ${type} show`;
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => note.classList.remove("show"), ms);
+}
+
+/* -------------- UI helpers ---------------------------- */
 function updateStatusUI(status) {
   const statusDiv = document.getElementById("curr_status");
   statusDiv.textContent = status === 1 ? "Open" : "Closed";
@@ -29,11 +52,9 @@ function updateStatusUI(status) {
     statusDiv.classList.remove("open-status");
     statusDiv.classList.add("closed-status");
   }
-
   updateButtonUI(status);
 }
 
-// Update button text and click behavior
 function updateButtonUI(status) {
   const btn = document.getElementById("doorToggleBtn");
   if (!btn) return;
@@ -42,68 +63,149 @@ function updateButtonUI(status) {
     btn.textContent = "Close Door";
     btn.onclick = () => {
       objectRef.once("value")
-        .then(snapshot => {
-          const objectDetected = snapshot.val();
-          if (objectDetected === 0) {
-            statusRef.set(0).then(() => {
-              moveServo(); // Trigger servo after closing
-            });
+        .then(snap => {
+          const objDetected = snap.val();
+          if (objDetected === 0) {
+            toggleDoor(0);
           } else {
-            alert("⚠ Cannot close door: Object detected! View live feed for more info");
+            showToast("⚠ Cannot close door: Object detected!", "error");
           }
         })
-        .catch(error => {
-          console.error("Object check error:", error);
-          alert("Error checking for obstacles.");
+        .catch(err => {
+          console.error("Object check error:", err);
+          showToast("Error checking for obstacles.", "error");
         });
     };
   } else {
     btn.textContent = "Open Door";
-    btn.onclick = () => {
-      statusRef.set(1).then(() => {
-        moveServo(); // Trigger servo after opening
-      });
-    };
+    btn.onclick = () => toggleDoor(1);
   }
+}
+
+/* -------------- Door control & polling ---------------- */
+function toggleDoor(targetStatus) {
+  const btn = document.getElementById("doorToggleBtn");
+  btn.disabled = true;
+  btn.textContent = targetStatus === 1 ? "Opening…" : "Closing…";
+
+  moveServo();
+
+  const pollInt = 500, timeout = 15000;
+  let elapsed = 0;
+  const poll = setInterval(() => {
+    statusRef.once("value")
+      .then(snap => {
+        const current = snap.val();
+        if (current === targetStatus) {
+          clearInterval(poll);
+          btn.disabled = false;
+          updateStatusUI(current);
+        } else {
+          elapsed += pollInt;
+          if (elapsed >= timeout) {
+            clearInterval(poll);
+            btn.disabled = false;
+            showToast("⏳ Door status update timed out – please try again.", "error");
+            updateStatusUI(current);
+          }
+        }
+      });
+  }, pollInt);
 }
 
 function moveServo() {
   servoRef.set(1)
-    .then(() => {
-      setTimeout(() => {
-        servoRef.set(0);
-      }, 750);
-    })
-    .catch(error => {
-      console.error("Error triggering servo:", error);
+    .then(() => setTimeout(() => servoRef.set(0), 750))
+    .catch(err => {
+      console.error("Error triggering servo:", err);
+      showToast("❌ Could not trigger servo.", "error");
     });
 }
 
 function viewLiveFeed() {
-  window.location.href = "https://esp32-object-detection-d863a.web.app";
+  window.location.href = "https://video-stream-bafda.web.app/";
 }
 
-// Realtime status listener
-statusRef.on("value", (snapshot) => {
-  const status = snapshot.val();
-  if (status !== null) {
-    updateStatusUI(status);
-  } else {
-    console.log("No status found");
+/* -------------- Realtime listeners -------------------- */
+statusRef.on("value", snap => {
+  const st = snap.val();
+  if (st !== null) updateStatusUI(st);
+});
+
+db.ref("/temperature").on("value", s => {
+  const v = s.val();
+  if (v !== null) document.getElementById("tempValue").textContent = v.toFixed(1);
+});
+
+db.ref("/humidity").on("value", s => {
+  const v = s.val();
+  if (v !== null) document.getElementById("humidityValue").textContent = v.toFixed(1);
+});
+
+/* 🔁 Sync door-status from second Firebase */
+secondDb.ref("door-status").on("value", snap => {
+  const newStatus = snap.val();
+  if (newStatus !== null) {
+    statusRef.once("value").then(primarySnap => {
+      const currentStatus = primarySnap.val();
+      if (currentStatus !== newStatus) {
+        statusRef.set(newStatus)
+          .then(() => console.log("✅ Synced door-status to primary Firebase"))
+          .catch(err => console.error("❌ Failed to sync door-status:", err));
+      }
+    });
   }
 });
 
-document.addEventListener("DOMContentLoaded", () => {
+/* 📏 Obstruction logic: ultrasonic/distance_inch vs g_length */
+secondDb.ref("ultrasonic/distance_inch").on("value", snap => {
+  const distanceStr = snap.val();
+  const distance = parseFloat(distanceStr);
+
+  if (isNaN(distance)) {
+    console.warn("🚫 Invalid distance value received:", distanceStr);
+    return;
+  }
+
+  db.ref("/g_length").once("value")
+    .then(gSnap => {
+      const gLength = parseFloat(gSnap.val());
+
+      if (isNaN(gLength)) {
+        console.warn("🚫 Invalid g_length value in DB:", gSnap.val());
+        return;
+      }
+
+      const obstruction = (gLength - distance) >= 10 ? 1 : 0;
+
+      db.ref("/obj_obstruction").set(obstruction)
+        .then(() => {
+          console.log(`📏 distance: ${distance}, g_length: ${gLength} → obstruction: ${obstruction}`);
+        })
+        .catch(err => {
+          console.error("❌ Failed to update obj_obstruction:", err);
+        });
+    })
+    .catch(err => {
+      console.error("❌ Failed to read g_length:", err);
+    });
 });
 
-// Modal logic
+
+/* -------------- Settings modal ------------------------ */
 const modal = document.getElementById("settingsModal");
 const overlay = document.getElementById("overlay");
 const settingsIcon = document.getElementById("settingsIcon");
+const gLengthInput = document.getElementById("gLengthInput");
 
 settingsIcon.addEventListener("click", () => {
   modal.style.display = "block";
   overlay.style.display = "block";
+  db.ref("/g_length").once("value")
+    .then(s => {
+      const v = s.val();
+      if (v !== null) gLengthInput.value = v;
+    });
 });
 
 function closeSettings() {
@@ -111,42 +213,18 @@ function closeSettings() {
   overlay.style.display = "none";
 }
 
-// Firebase listeners (adjust paths as needed)
-const tempSpan = document.getElementById("tempValue");
-const humiditySpan = document.getElementById("humidityValue");
-
-firebase.database().ref("/temperature").on("value", (snapshot) => {
-  const val = snapshot.val();
-  if (val !== null) tempSpan.textContent = val.toFixed(1);
-});
-
-firebase.database().ref("/humidity").on("value", (snapshot) => {
-  const val = snapshot.val();
-  if (val !== null) humiditySpan.textContent = val.toFixed(1);
-});
-
-const gLengthInput = document.getElementById("gLengthInput");
-
 function saveGLength() {
-  const value = parseFloat(gLengthInput.value);
-  if (isNaN(value)) {
-    alert("Please enter a valid number for g_length.");
+  const val = parseFloat(gLengthInput.value);
+  if (isNaN(val)) {
+    showToast("Please enter a valid number for g_length.", "error");
     return;
   }
 
-  firebase.database().ref("/g_length").set(value)
-    .then(() => alert("✅ g_length saved!"))
-    .catch((error) => alert("❌ Failed to save: " + error.message));
-}
-
-// Load g_length when modal opens
-settingsIcon.addEventListener("click", () => {
-  modal.style.display = "block";
-  overlay.style.display = "block";
-
-  firebase.database().ref("/g_length").once("value")
-    .then((snapshot) => {
-      const val = snapshot.val();
-      if (val !== null) gLengthInput.value = val;
+  db.ref("/g_length").set(val)
+    .then(() => secondDb.ref("/g_length").set(val))
+    .then(() => showToast("✔ Settings updated successfully!", "success"))
+    .catch(err => {
+      console.error("Error saving:", err);
+      showToast("❌ " + err.message, "error");
     });
-});
+}

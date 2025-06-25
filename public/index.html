@@ -25,41 +25,20 @@
         <h1 class="app-name">Door<span class="highlight">Sure</span></h1>
       </div>
       <div class="user-section">
-        <p>Hello, <em>User</em></p>
-        <img src="images/gear.png" alt="Settings" class="gear-icon" id="settingsIcon" />
+        <p>Hello, <em>Username</em></p>
+        <img src="images/gear.png" alt="Settings" class="gear-icon" style="cursor:pointer;" onclick="window.location.href='settings.html';" />
       </div>
     </header>
 
     <main>
-      <div class="status-wrapper">
-        <div class="status-section">
-          <p class="status-label">Your Garage Door is:</p>
-          <div class="status" id="curr_status">Loading Status...</div>
-        </div>
-      </div>
+      <p class="status-label">Your Garage Door is:</p>
+      <div class="status" id="curr_status">Loading Status...</div>
       <div class="button-group">
         <button id="doorToggleBtn">Loading...</button>
         <button onclick="viewLiveFeed()">View Live Feed</button>
       </div>
-    </main> 
-
+      
+    </main>
   </div>
-
-  <!-- Settings -->
-<div id="overlay"></div>
-<div class="settings-modal" id="settingsModal">
-  <h2>Settings</h2>
-  <p>🌡️ Temperature: <span id="tempValue">--</span> °F</p>
-  <p>💧 Humidity: <span id="humidityValue">--</span> %</p>
-
-  <div class="input-group">
-    <label for="gLengthInput">📏 Garage Length:</label>
-    <input type="number" id="gLengthInput" placeholder="Enter value in inches" />
-    <button onclick="saveGLength()">Save</button>
-  </div>
-
-  <button onclick="closeSettings()">Close</button>
-</div>
-
 </body>
 </html>
