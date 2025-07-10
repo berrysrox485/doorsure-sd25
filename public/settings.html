@@ -5,121 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>DoorSure Settings</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Toggle Switch Style */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 42px;
-      height: 24px;
-    }
+  <link rel="stylesheet" href="settings_styles.css">
+  <!-- Firebase scripts -->
+  <script defer src="/__/firebase/11.4.0/firebase-app-compat.js"></script>
+  <script defer src="/__/firebase/11.4.0/firebase-auth-compat.js"></script>
+  <script defer src="/__/firebase/11.4.0/firebase-database-compat.js"></script>
+  <script defer src="/__/firebase/11.4.0/firebase-firestore-compat.js"></script>
+  <script defer src="/__/firebase/11.4.0/firebase-functions-compat.js"></script>
+  <script defer src="/__/firebase/11.4.0/firebase-storage-compat.js"></script>
+  <script defer src="/__/firebase/11.4.0/firebase-remote-config-compat.js"></script>
+  <script defer src="/__/firebase/11.4.0/firebase-performance-compat.js"></script>
+  <script defer src="functions.js"></script>
 
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
+  <script>
+  window.addEventListener('DOMContentLoaded', () => {
+    requireAuth("login.html", () => {
+      readUsername(); // Optional: show username if needed
 
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: .4s;
-      border-radius: 24px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-
-    .switch input:checked + .slider {
-      background-color: #268d6e;
-    }
-
-    .switch input:checked + .slider:before {
-      transform: translateX(18px);
-    }
-
-    /* Styled Dropdown */
-    .dropdown-wrapper {
-      position: relative;
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    .styled-dropdown {
-      appearance: none;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-
-      width: 100%;
-      padding: 12px 16px;
-      font-size: 1em;
-      font-weight: bold;
-      font-style: italic;
-      font-family: 'Poppins', sans-serif;
-      color: #fff;
-
-      background: linear-gradient(to bottom, #efb6b6, #35626c);
-      border: none;
-      border-radius: 25px;
-      box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
-
-      background-image: url('data:image/svg+xml;utf8,<svg fill="white" height="18" viewBox="0 0 24 24" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
-      background-repeat: no-repeat;
-      background-position: right 16px center;
-      background-size: 18px 18px;
-
-      cursor: pointer;
-    }
-
-    .styled-dropdown:focus {
-      outline: none;
-      box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.25);
-    }
-
-    .settings-title {
-      font-size: 1.6em;
-      font-weight: bold;
-      color: #268d6e;
-      margin-bottom: 10px;
-    }
-
-    .subheading {
-      font-size: 1.1em;
-      margin-bottom: 20px;
-    }
-
-    .toggle-group {
-      margin-bottom: 20px;
-    }
-  </style>
+      // Load current g_length from Firebase
+      const gLengthLabel = document.getElementById("gLengthLabel");
+      const gLengthInput = document.getElementById("gLengthInput");
+      firebase.database().ref("/g_length").once("value").then(snap => {
+        const val = snap.val();
+        if (val !== null) {
+          gLengthLabel.textContent = `Garage Length (current: ${val} inches)`;
+          gLengthInput.value = val;
+        } else {
+          gLengthLabel.textContent = `Garage Length (current: not set)`;
+        }
+      }).catch(err => {
+        console.error("Error reading g_length:", err);
+        gLengthLabel.textContent = "Garage Length (error loading)";
+      });
+    });
+  });
+  </script>
 </head>
 <body>
   <div class="container">
-    <!-- Top Button -->
-    <div class="button-group">
-      <button>Return</button>
+    <!-- Header with Return and Logout -->
+    <div class="button-group" style="display: flex; justify-content: space-between; align-items: center;">
+      <button onclick="window.location.href='home.html'" style="width: auto; padding: 8px 16px;">Return</button>
+      <button onclick="logout()" style="width: auto; padding: 8px 16px; background: #d9534f;">Logout</button>
     </div>
 
     <!-- Settings Content -->
     <main>
       <div>
         <h2 class="settings-title">Settings</h2>
+          <div id="notification" class="notification"></div>
+        <!-- g_length setting with label, input and Save button side by side -->
+        <div class="g-length-setting" style="
+  margin-bottom: 30px;
+  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+">
+
+          <label id="gLengthLabel" for="gLengthInput" style="font-weight: bold; margin: 0; min-width: 190px;">
+            Garage Length (loading...)
+          </label>
+          <input
+            type="number"
+            id="gLengthInput"
+            placeholder="Enter length (inches)"
+            min="0"
+            style="flex-grow: 1; padding: 8px; font-size: 1em; border: 1px solid #aaa; border-radius: 6px;"
+          />
+          <button
+            onclick="saveGLength()"
+            style="padding: 10px 18px; background: linear-gradient(to bottom, #efb6b6, #35626c); color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer;"
+          >
+            Save
+          </button>
+        </div>
+
+        <!-- Notification Preference -->
         <p class="subheading">Notifications Preference</p>
-        
+
         <!-- Toggle Options -->
         <div class="toggle-group">
           <div class="toggle-option" style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
@@ -129,7 +94,7 @@
               <span class="slider"></span>
             </label>
           </div>
-          
+
           <div class="toggle-option" style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
             <span>Garage has been closed</span>
             <label class="switch">
@@ -159,5 +124,6 @@
       <h3 class="app-name">Door<span class="highlight">Sure</span></h3>
     </div>
   </div>
+
 </body>
 </html>

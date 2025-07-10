@@ -31,6 +31,18 @@ const servoRef  = db.ref("servo-move");
 const secondApp = firebase.initializeApp(secondFirebaseConfig, "secondApp");
 const secondDb  = secondApp.database();
 
+const auth = firebase.auth();
+firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)  // males sure user stays logged in
+  .then(() => {
+    // You can proceed with auth-related logic if needed
+    console.log("🔐 Firebase auth persistence set to LOCAL");
+  })
+  .catch((error) => {
+    console.error("❌ Failed to set auth persistence:", error);
+  });
+
+
+
 /* -------------- Toast helper -------------------------- */
 function showToast(msg, type = "info", ms = 4000) {
   const note = document.getElementById("notification");
@@ -41,6 +53,46 @@ function showToast(msg, type = "info", ms = 4000) {
 }
 
 /* -------------- UI helpers ---------------------------- */
+function readUsername() {
+  const username = localStorage.getItem('username');
+  const displayElement = document.getElementById('usernameDisplay');
+  if (displayElement) {
+    displayElement.innerText = username || "User";
+  }
+}
+
+// LOGOUT
+function logout() {
+  auth.signOut()
+    .then(() => {
+      localStorage.removeItem("username");
+      window.location.href = "index.html";  // back to login page
+    })
+    .catch(error => {
+      console.error("Logout failed:", error);
+      showToast("Logout failed: " + error.message, "error");
+    });
+}
+
+
+// makes sure user is authenticated before accessing the page
+function requireAuth(redirectPath = "login.html", onAuthenticated = () => {}) {
+  const timeout = setTimeout(() => {
+    console.warn("⏳ Auth check timed out – redirecting.");
+    window.location.href = redirectPath;
+  }, 3000); // give Firebase up to 3 seconds to initialize
+
+  firebase.auth().onAuthStateChanged(user => {
+    clearTimeout(timeout);
+    if (!user) {
+      window.location.href = redirectPath;
+    } else {
+      onAuthenticated(user);
+    }
+  });
+}
+
+
 function updateStatusUI(status) {
   const statusDiv = document.getElementById("curr_status");
   statusDiv.textContent = status === 1 ? "Open" : "Closed";
@@ -122,9 +174,11 @@ function moveServo() {
     });
 }
 
-function viewLiveFeed() {
-  window.location.href = "https://video-stream-bafda.web.app/";
-}
+window.viewLiveFeed = function() {
+  window.open("https://esp32-object-detection-d863a.web.app/", "_blank");
+};
+
+
 
 /* -------------- Realtime listeners -------------------- */
 statusRef.on("value", snap => {
@@ -214,17 +268,23 @@ function closeSettings() {
 }
 
 function saveGLength() {
-  const val = parseFloat(gLengthInput.value);
-  if (isNaN(val)) {
-    showToast("Please enter a valid number for g_length.", "error");
+  const val = parseFloat(document.getElementById("gLengthInput").value);
+  if (isNaN(val) || val < 0) {
+    showToast("Please enter a valid non-negative number for garage length.", "error");
     return;
   }
 
   db.ref("/g_length").set(val)
     .then(() => secondDb.ref("/g_length").set(val))
-    .then(() => showToast("✔ Settings updated successfully!", "success"))
+    .then(() => {
+      showToast("✔ Settings updated successfully!", "success");
+      setTimeout(() => {
+        location.reload();
+      }, 1500);  // slight delay to let user see toast
+    })
     .catch(err => {
       console.error("Error saving:", err);
       showToast("❌ " + err.message, "error");
     });
 }
+

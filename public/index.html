@@ -2,43 +2,110 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DoorSure</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
   <link rel="stylesheet" href="styles.css">
 
-  <!-- Firebase scripts -->
+  <style>
+    /* Override container to match home.html layout */
+    .container {
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #fff;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column; /* vertical stack */
+      gap: 30px; /* space between children */
+      text-align: center;
+    }
+
+    h2 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 2.5em;
+      color: #268d6e;
+      margin-bottom: 10px;
+    }
+
+    .form-box {
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 10px;
+      width: 100%; /* full container width */
+      box-sizing: border-box;
+      text-align: left;
+    }
+
+    .form-box h3 {
+      margin-bottom: 15px;
+      color: #268d6e;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 10px;
+      font-size: 1em;
+      border: 1px solid #aaa;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(to bottom, #efb6b6, #35626c);
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      font-size: 1em;
+    }
+
+    button:hover {
+      background: linear-gradient(to bottom, #35626c, #efb6b6);
+    }
+
+    #message {
+      margin-top: 20px;
+      color: red;
+      text-align: center;
+    }
+  </style>
+
+  <!-- Firebase SDKs -->
   <script defer src="/__/firebase/11.4.0/firebase-app-compat.js"></script>
   <script defer src="/__/firebase/11.4.0/firebase-auth-compat.js"></script>
   <script defer src="/__/firebase/11.4.0/firebase-database-compat.js"></script>
-  <script defer src="/__/firebase/11.4.0/firebase-firestore-compat.js"></script>
-  <script defer src="/__/firebase/11.4.0/firebase-functions-compat.js"></script>
-  <script defer src="/__/firebase/11.4.0/firebase-storage-compat.js"></script>
-  <script defer src="/__/firebase/11.4.0/firebase-remote-config-compat.js"></script>
-  <script defer src="/__/firebase/11.4.0/firebase-performance-compat.js"></script>
-  <script defer src="functions.js"></script>
+  <script defer src="auth.js"></script>
 </head>
 <body>
   <div class="container">
-    <header>
-      <div class="logo-section">
-        <img src="images/logo.png" alt="Logo" class="logo" />
-        <h1 class="app-name">Door<span class="highlight">Sure</span></h1>
-      </div>
-      <div class="user-section">
-        <p>Hello, <em>Username</em></p>
-        <img src="images/gear.png" alt="Settings" class="gear-icon" style="cursor:pointer;" onclick="window.location.href='settings.html';" />
-      </div>
-    </header>
+    <h2>DoorSure</h2>
+    <p id="message"></p> <!-- Message for errors or info -->
 
-    <main>
-      <p class="status-label">Your Garage Door is:</p>
-      <div class="status" id="curr_status">Loading Status...</div>
-      <div class="button-group">
-        <button id="doorToggleBtn">Loading...</button>
-        <button onclick="viewLiveFeed()">View Live Feed</button>
-      </div>
-      
-    </main>
+    <div class="form-box">
+      <h3>Login</h3>
+      <input type="text" id="login-username" placeholder="Username" />
+      <input type="password" id="login-password" placeholder="Password" />
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div class="form-box">
+      <h3>Sign Up</h3>
+      <input type="text" id="signup-username" placeholder="Username" />
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button onclick="signup()">Sign Up</button>
+    </div>
   </div>
+
 </body>
 </html>

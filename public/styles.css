@@ -278,3 +278,16 @@
   outline: none;
   box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.25);
 }
+
+/* ─────────────────────────────────────────────────────────────── */
+/* temperature and humidity styling                                */
+/* ─────────────────────────────────────────────────────────────── */
+.sensor-readings {
+  margin-top: 20px;
+  font-size: 1.2em;
+  text-align: center;
+}
+
+.sensor-readings p {
+  margin: 5px 0;
+}
