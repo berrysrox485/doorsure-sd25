@@ -18,28 +18,64 @@
   <script defer src="functions.js"></script>
 
   <script>
-  window.addEventListener('DOMContentLoaded', () => {
-    requireAuth("login.html", () => {
-      readUsername(); // Optional: show username if needed
+window.addEventListener('DOMContentLoaded', () => {
+  requireAuth("login.html", () => {
+    readUsername(); // Optional: show username if needed
+    const user = firebase.auth().currentUser; // guaranteed to be defined here
 
-      // Load current g_length from Firebase
-      const gLengthLabel = document.getElementById("gLengthLabel");
-      const gLengthInput = document.getElementById("gLengthInput");
-      firebase.database().ref("/g_length").once("value").then(snap => {
-        const val = snap.val();
-        if (val !== null) {
-          gLengthLabel.textContent = `Garage Length (current: ${val} inches)`;
-          gLengthInput.value = val;
-        } else {
-          gLengthLabel.textContent = `Garage Length (current: not set)`;
-        }
-      }).catch(err => {
-        console.error("Error reading g_length:", err);
-        gLengthLabel.textContent = "Garage Length (error loading)";
+    // Load and reflect notification preferences from DB
+    const notifyGarageOpenRef = firebase.database().ref(`/users/${user.uid}/preferences/notifyGarageOpen`);
+    const notifyGarageCloseRef = firebase.database().ref(`/users/${user.uid}/preferences/notifyGarageClose`);
+
+    notifyGarageOpenRef.once("value").then(snap => {
+      document.getElementById("notifyGarageOpen").checked = !!snap.val();
+    }).catch(err => {
+      console.error("Error loading notifyGarageOpen preference:", err);
+    });
+
+    notifyGarageCloseRef.once("value").then(snap => {
+      document.getElementById("notifyGarageClose").checked = !!snap.val();
+    }).catch(err => {
+      console.error("Error loading notifyGarageClose preference:", err);
+    });
+
+    // Add event listeners to save preferences on toggle change
+    document.getElementById("notifyGarageOpen").addEventListener("change", (e) => {
+      notifyGarageOpenRef.set(e.target.checked).catch(err => {
+        console.error("Error saving notifyGarageOpen preference:", err);
       });
     });
+
+    document.getElementById("notifyGarageClose").addEventListener("change", (e) => {
+      notifyGarageCloseRef.set(e.target.checked).catch(err => {
+        console.error("Error saving notifyGarageClose preference:", err);
+      });
+    });
+
+    // Save user email (optional, if you want to keep it updated)
+    firebase.database().ref(`/users/${user.uid}/email`).set(user.email).catch(err => {
+      console.error("Error saving user email:", err);
+    });
+
+    // Load current g_length from Firebase
+    const gLengthLabel = document.getElementById("gLengthLabel");
+    const gLengthInput = document.getElementById("gLengthInput");
+    firebase.database().ref("/g_length").once("value").then(snap => {
+      const val = snap.val();
+      if (val !== null) {
+        gLengthLabel.textContent = `Garage Length (current: ${val} inches)`;
+        gLengthInput.value = val;
+      } else {
+        gLengthLabel.textContent = `Garage Length (current: not set)`;
+      }
+    }).catch(err => {
+      console.error("Error reading g_length:", err);
+      gLengthLabel.textContent = "Garage Length (error loading)";
+    });
   });
-  </script>
+});
+</script>
+
 </head>
 <body>
   <div class="container">
@@ -90,7 +126,7 @@
           <div class="toggle-option" style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
             <span>Garage has been opened</span>
             <label class="switch">
-              <input type="checkbox">
+              <input type="checkbox" id ="notifyGarageOpen">
               <span class="slider"></span>
             </label>
           </div>
@@ -98,7 +134,7 @@
           <div class="toggle-option" style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
             <span>Garage has been closed</span>
             <label class="switch">
-              <input type="checkbox">
+              <input type="checkbox" id ="notifyGarageClose">
               <span class="slider"></span>
             </label>
           </div>
@@ -109,9 +145,11 @@
           <p>Send notification if the garage door has been opened for:</p>
           <div class="dropdown-wrapper">
             <select class="styled-dropdown">
+              <option>Opt Out</option>
+              <option>30 Seconds</option>
+              <option>1 Minute</option>
               <option>5 Minutes</option>
               <option>10 Minutes</option>
-              <option>15 Minutes</option>
             </select>
           </div>
         </div>

@@ -51,8 +51,8 @@ function login() {
 
 // SIGN UP with username, email, and password
 function signup() {
-  const username = document.getElementById('signup-username').value;
-  const email = document.getElementById('email').value;
+  const username = document.getElementById('signup-username').value.trim();
+  const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
 
   if (!username) {
@@ -71,10 +71,20 @@ function signup() {
       return auth.createUserWithEmailAndPassword(email, password);
     })
     .then(userCredential => {
-      // Store both username → email and email → username
+      const uid = userCredential.user.uid;
+
+      // Write username→email, email→username, and centralized user node with prefs
       return Promise.all([
         db.ref('usernames/' + username).set(email),
-        db.ref('emails/' + btoa(email)).set(username) // base64 encode email as Firebase keys can't use `.`, `@`
+        db.ref('emails/' + btoa(email)).set(username),
+        db.ref('users/' + uid).set({
+          email: email,
+          username: username,
+          preferences: {
+            notifyGarageOpen: true,
+            notifyGarageClose: true
+          }
+        })
       ]);
     })
     .then(() => {

@@ -32,7 +32,7 @@ const secondApp = firebase.initializeApp(secondFirebaseConfig, "secondApp");
 const secondDb  = secondApp.database();
 
 const auth = firebase.auth();
-firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)  // males sure user stays logged in
+firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)  // makes sure user stays logged in
   .then(() => {
     // You can proceed with auth-related logic if needed
     console.log("🔐 Firebase auth persistence set to LOCAL");
@@ -40,8 +40,6 @@ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)  // males s
   .catch((error) => {
     console.error("❌ Failed to set auth persistence:", error);
   });
-
-
 
 /* -------------- Toast helper -------------------------- */
 function showToast(msg, type = "info", ms = 4000) {
@@ -92,7 +90,7 @@ function requireAuth(redirectPath = "login.html", onAuthenticated = () => {}) {
   });
 }
 
-
+// UI update for status display
 function updateStatusUI(status) {
   const statusDiv = document.getElementById("curr_status");
   statusDiv.textContent = status === 1 ? "Open" : "Closed";
@@ -107,6 +105,7 @@ function updateStatusUI(status) {
   updateButtonUI(status);
 }
 
+// UI update for the door toggle button
 function updateButtonUI(status) {
   const btn = document.getElementById("doorToggleBtn");
   if (!btn) return;
@@ -140,9 +139,9 @@ function toggleDoor(targetStatus) {
   btn.disabled = true;
   btn.textContent = targetStatus === 1 ? "Opening…" : "Closing…";
 
-  moveServo();
+  moveServo();  // trigger the servo to move, add 1 or 2 based on pattern we want
 
-  const pollInt = 500, timeout = 15000;
+  const pollInt = 500, timeout = 20000; // wait 20secs for timeout
   let elapsed = 0;
   const poll = setInterval(() => {
     statusRef.once("value")
@@ -174,6 +173,7 @@ function moveServo() {
     });
 }
 
+// open live feed in a new tab
 window.viewLiveFeed = function() {
   window.open("https://esp32-object-detection-d863a.web.app/", "_blank");
 };
@@ -288,3 +288,16 @@ function saveGLength() {
     });
 }
 
+// notifications preferences and event listeners
+// OPEN NOTIFICATIONS
+const user = firebase.auth().currentUser;
+firebase.database().ref(`/users/${user.uid}/preferences/notifyGarageOpen`).once("value")
+  .then(snap => {
+    document.getElementById("notifyGarageOpen").checked = !!snap.val();
+  });
+
+document.getElementById("notifyGarageOpen").addEventListener("change", (e) => {
+  const enabled = e.target.checked;
+  const user = firebase.auth().currentUser;
+  firebase.database().ref(`/users/${user.uid}/preferences/notifyGarageOpen`).set(enabled);
+});
