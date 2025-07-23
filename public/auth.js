@@ -82,7 +82,8 @@ function signup() {
           username: username,
           preferences: {
             notifyGarageOpen: true,
-            notifyGarageClose: true
+            notifyGarageClose: true,
+            notifyOpenTimeout: 1 // Default to 1 minute
           }
         })
       ]);

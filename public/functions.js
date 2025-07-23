@@ -21,29 +21,28 @@ const secondFirebaseConfig = {
   measurementId: "G-F6PY8JMBJB"
 };
 
-/* -------------- Initialise Firebase apps -------------- */
+// Initialize primary Firebase
 firebase.initializeApp(firebaseConfig);
-const db        = firebase.database();
+const db = firebase.database();
+const auth = firebase.auth();
 const statusRef = db.ref("door-status");
 const objectRef = db.ref("obj_obstruction");
-const servoRef  = db.ref("servo-move");
+const servoRef = db.ref("servo-move");
+const commandRef = db.ref("door-command");
 
+// Initialize second Firebase
 const secondApp = firebase.initializeApp(secondFirebaseConfig, "secondApp");
-const secondDb  = secondApp.database();
+const secondDb = secondApp.database();
 
-const auth = firebase.auth();
-firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)  // makes sure user stays logged in
-  .then(() => {
-    // You can proceed with auth-related logic if needed
-    console.log("🔐 Firebase auth persistence set to LOCAL");
-  })
-  .catch((error) => {
-    console.error("❌ Failed to set auth persistence:", error);
-  });
+/* -------------- Auth persistence --------------------- */
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .then(() => console.log("🔐 Firebase auth persistence set to LOCAL"))
+  .catch((error) => console.error("❌ Failed to set auth persistence:", error));
 
 /* -------------- Toast helper -------------------------- */
 function showToast(msg, type = "info", ms = 4000) {
   const note = document.getElementById("notification");
+  if (!note) return; // Guard for missing notification element
   note.textContent = msg;
   note.className = `notification ${type} show`;
   clearTimeout(showToast._timer);
@@ -64,7 +63,7 @@ function logout() {
   auth.signOut()
     .then(() => {
       localStorage.removeItem("username");
-      window.location.href = "index.html";  // back to login page
+      window.location.href = "index.html";
     })
     .catch(error => {
       console.error("Logout failed:", error);
@@ -72,27 +71,9 @@ function logout() {
     });
 }
 
-
-// makes sure user is authenticated before accessing the page
-function requireAuth(redirectPath = "login.html", onAuthenticated = () => {}) {
-  const timeout = setTimeout(() => {
-    console.warn("⏳ Auth check timed out – redirecting.");
-    window.location.href = redirectPath;
-  }, 3000); // give Firebase up to 3 seconds to initialize
-
-  firebase.auth().onAuthStateChanged(user => {
-    clearTimeout(timeout);
-    if (!user) {
-      window.location.href = redirectPath;
-    } else {
-      onAuthenticated(user);
-    }
-  });
-}
-
-// UI update for status display
 function updateStatusUI(status) {
   const statusDiv = document.getElementById("curr_status");
+  if (!statusDiv) return;
   statusDiv.textContent = status === 1 ? "Open" : "Closed";
 
   if (status === 1) {
@@ -105,182 +86,129 @@ function updateStatusUI(status) {
   updateButtonUI(status);
 }
 
-// UI update for the door toggle button
 function updateButtonUI(status) {
   const btn = document.getElementById("doorToggleBtn");
   if (!btn) return;
 
   if (status === 1) {
-    btn.textContent = "Close Door";
-    btn.onclick = () => {
-      objectRef.once("value")
-        .then(snap => {
-          const objDetected = snap.val();
-          if (objDetected === 0) {
-            toggleDoor(0);
-          } else {
-            showToast("⚠ Cannot close door: Object detected!", "error");
-          }
-        })
-        .catch(err => {
-          console.error("Object check error:", err);
-          showToast("Error checking for obstacles.", "error");
-        });
-    };
-  } else {
+  btn.textContent = "Close Door";
+  btn.onclick = () => {
+    console.log("🔘 Close button clicked");
+
+    objectRef.once("value")
+      .then(snap => {
+        const objDetected = snap.val();
+        console.log("📡 Firebase read - objectRef value:", objDetected);
+
+        if (parseInt(objDetected) === 0) {
+          console.log("✅ No object detected, sending door close command");
+          toggleDoor(0);
+        } else {
+          console.warn("🚫 Object detected! Not closing door.");
+          showToast("⚠ Cannot close door: Object detected!", "error"); // display error 
+        }
+      })
+      .catch(err => {
+        console.error("❌ Error reading objectRef:", err);
+        showToast("Error checking for obstacles.", "error");  // system error when checking the flag
+      });
+  };
+}
+ else {
     btn.textContent = "Open Door";
     btn.onclick = () => toggleDoor(1);
   }
 }
 
-/* -------------- Door control & polling ---------------- */
+/* -------------- Door control -------------------------- */
 function toggleDoor(targetStatus) {
   const btn = document.getElementById("doorToggleBtn");
+  if (!btn) return;
   btn.disabled = true;
   btn.textContent = targetStatus === 1 ? "Opening…" : "Closing…";
 
-  moveServo();  // trigger the servo to move, add 1 or 2 based on pattern we want
+  commandRef.set(targetStatus)  // change door command var to targetStatus in Firebase
+    .then(() => {
+      console.log(`✅ Door command set to ${targetStatus}`);
 
-  const pollInt = 500, timeout = 20000; // wait 20secs for timeout
-  let elapsed = 0;
-  const poll = setInterval(() => {
-    statusRef.once("value")
-      .then(snap => {
-        const current = snap.val();
-        if (current === targetStatus) {
-          clearInterval(poll);
-          btn.disabled = false;
-          updateStatusUI(current);
-        } else {
-          elapsed += pollInt;
-          if (elapsed >= timeout) {
+      // wait 5 seconds before resetting command to -1
+      setTimeout(() => {
+        commandRef.set(-1)
+          .then(() => console.log("🔁 door-command reset to -1"))
+          .catch(err => console.warn("Failed to reset door-command:", err));
+      }, 5000);
+
+      // poll to make sure status is updated, else show error
+      const pollInt = 500, timeout = 20000;
+      let elapsed = 0;
+      const poll = setInterval(() => {
+        statusRef.once("value").then(snap => {
+          const current = snap.val();
+          if (current === targetStatus) {
             clearInterval(poll);
             btn.disabled = false;
-            showToast("⏳ Door status update timed out – please try again.", "error");
             updateStatusUI(current);
+          } else {
+            elapsed += pollInt;
+            if (elapsed >= timeout) {
+              clearInterval(poll);
+              btn.disabled = false;
+              showToast("⏳ Door status update timed out – try again.", "error");
+              updateStatusUI(current);
+            }
           }
-        }
-      });
-  }, pollInt);
-}
-
-function moveServo() {
-  servoRef.set(1)
-    .then(() => setTimeout(() => servoRef.set(0), 750))
+        });
+      }, pollInt);
+    })
     .catch(err => {
-      console.error("Error triggering servo:", err);
-      showToast("❌ Could not trigger servo.", "error");
+      console.error("Error sending door command:", err);
+      showToast("❌ Failed to send door command.", "error");
+      btn.disabled = false;
     });
 }
 
-// open live feed in a new tab
-window.viewLiveFeed = function() {
+window.viewLiveFeed = function () {
   window.open("https://esp32-object-detection-d863a.web.app/", "_blank");
 };
 
-
-
-/* -------------- Realtime listeners -------------------- */
-statusRef.on("value", snap => {
-  const st = snap.val();
-  if (st !== null) updateStatusUI(st);
-});
-
-db.ref("/temperature").on("value", s => {
-  const v = s.val();
-  if (v !== null) document.getElementById("tempValue").textContent = v.toFixed(1);
-});
-
-db.ref("/humidity").on("value", s => {
-  const v = s.val();
-  if (v !== null) document.getElementById("humidityValue").textContent = v.toFixed(1);
-});
-
-/* 🔁 Sync door-status from second Firebase */
-secondDb.ref("door-status").on("value", snap => {
-  const newStatus = snap.val();
-  if (newStatus !== null) {
-    statusRef.once("value").then(primarySnap => {
-      const currentStatus = primarySnap.val();
-      if (currentStatus !== newStatus) {
-        statusRef.set(newStatus)
-          .then(() => console.log("✅ Synced door-status to primary Firebase"))
-          .catch(err => console.error("❌ Failed to sync door-status:", err));
-      }
-    });
-  }
-});
-
-/* 📏 Obstruction logic: ultrasonic/distance_inch vs g_length */
-secondDb.ref("ultrasonic/distance_inch").on("value", snap => {
-  const distanceStr = snap.val();
-  const distance = parseFloat(distanceStr);
-
-  if (isNaN(distance)) {
-    console.warn("🚫 Invalid distance value received:", distanceStr);
-    return;
-  }
-
-  db.ref("/g_length").once("value")
-    .then(gSnap => {
-      const gLength = parseFloat(gSnap.val());
-
-      if (isNaN(gLength)) {
-        console.warn("🚫 Invalid g_length value in DB:", gSnap.val());
-        return;
-      }
-
-      const obstruction = (gLength - distance) >= 10 ? 1 : 0;
-
-      db.ref("/obj_obstruction").set(obstruction)
-        .then(() => {
-          console.log(`📏 distance: ${distance}, g_length: ${gLength} → obstruction: ${obstruction}`);
-        })
-        .catch(err => {
-          console.error("❌ Failed to update obj_obstruction:", err);
-        });
-    })
-    .catch(err => {
-      console.error("❌ Failed to read g_length:", err);
-    });
-});
-
-
-/* -------------- Settings modal ------------------------ */
+/* -------------- Settings Modal Elements (settings.html only) ------------------------ */
 const modal = document.getElementById("settingsModal");
 const overlay = document.getElementById("overlay");
 const settingsIcon = document.getElementById("settingsIcon");
 const gLengthInput = document.getElementById("gLengthInput");
 
-settingsIcon.addEventListener("click", () => {
-  modal.style.display = "block";
-  overlay.style.display = "block";
-  db.ref("/g_length").once("value")
-    .then(s => {
+if (settingsIcon && modal && overlay && gLengthInput) {
+  settingsIcon.addEventListener("click", () => {
+    modal.style.display = "block";
+    overlay.style.display = "block";
+    db.ref("/g_length").once("value").then(s => {
       const v = s.val();
       if (v !== null) gLengthInput.value = v;
     });
-});
+  });
+}
 
 function closeSettings() {
-  modal.style.display = "none";
-  overlay.style.display = "none";
+  if (modal && overlay) {
+    modal.style.display = "none";
+    overlay.style.display = "none";
+  }
 }
 
 function saveGLength() {
-  const val = parseFloat(document.getElementById("gLengthInput").value);
+  if (!gLengthInput) return;
+
+  const val = parseFloat(gLengthInput.value);
   if (isNaN(val) || val < 0) {
-    showToast("Please enter a valid non-negative number for garage length.", "error");
+    showToast("Please enter a valid non-negative number.", "error");
     return;
   }
 
   db.ref("/g_length").set(val)
     .then(() => secondDb.ref("/g_length").set(val))
     .then(() => {
-      showToast("✔ Settings updated successfully!", "success");
-      setTimeout(() => {
-        location.reload();
-      }, 1500);  // slight delay to let user see toast
+      showToast("✔ Settings updated!", "success");
+      setTimeout(() => location.reload(), 1500);
     })
     .catch(err => {
       console.error("Error saving:", err);
@@ -288,16 +216,82 @@ function saveGLength() {
     });
 }
 
-// notifications preferences and event listeners
-// OPEN NOTIFICATIONS
-const user = firebase.auth().currentUser;
-firebase.database().ref(`/users/${user.uid}/preferences/notifyGarageOpen`).once("value")
-  .then(snap => {
-    document.getElementById("notifyGarageOpen").checked = !!snap.val();
+/* -------------- AUTH-AWARE Logic ---------------------- */
+firebase.auth().onAuthStateChanged(user => {
+  if (!user) {
+    console.warn("⛔ Not logged in. Redirecting to login...");
+    window.location.href = "index.html";
+    return;
+  }
+
+  console.log("✅ Authenticated:", user.uid);
+  readUsername();
+
+  // Live status listener (primary)
+  statusRef.on("value", snap => {
+    const st = snap.val();
+    if (st !== null) updateStatusUI(st);
   });
 
-document.getElementById("notifyGarageOpen").addEventListener("change", (e) => {
-  const enabled = e.target.checked;
-  const user = firebase.auth().currentUser;
-  firebase.database().ref(`/users/${user.uid}/preferences/notifyGarageOpen`).set(enabled);
+  // Temperature listener
+  db.ref("/temperature").on("value", s => {
+    const v = s.val();
+    const tempEl = document.getElementById("tempValue");
+    if (v !== null && tempEl) tempEl.textContent = v.toFixed(1);
+  });
+
+  // Humidity listener
+  db.ref("/humidity").on("value", s => {
+    const v = s.val();
+    const humEl = document.getElementById("humidityValue");
+    if (v !== null && humEl) humEl.textContent = v.toFixed(1);
+  });
+
+  // Sync door-status from second DB → primary DB
+  secondDb.ref("door-status").on("value", snap => {
+    const newStatus = snap.val();
+    console.log("📥 Synced value from secondDb:", newStatus);
+
+    if (newStatus !== null) {
+      statusRef.once("value").then(primarySnap => {
+        const currentStatus = primarySnap.val();
+        if (currentStatus !== newStatus) {
+          statusRef.set(newStatus)
+            .then(() => console.log("✅ Synced door-status to primary Firebase"))
+            .catch(err => console.error("❌ Failed to sync door-status:", err));
+        }
+      });
+    }
+  });
+
+  // Object obstruction check
+  secondDb.ref("ultrasonic/distance_inch").on("value", snap => {
+    const distance = parseFloat(snap.val());
+    if (isNaN(distance)) return;
+
+    db.ref("/g_length").once("value").then(gSnap => {
+      const gLength = parseFloat(gSnap.val());
+      if (isNaN(gLength)) return;
+
+      const obstruction = (gLength - distance) >= 3 ? 1 : 0; // 3 inches threshold
+      db.ref("/obj_obstruction").set(obstruction)
+        .then(() => console.log(`📏 Obstruction updated: ${obstruction}`))
+        .catch(err => console.error("❌ Failed to update obj_obstruction:", err));
+    });
+  });
+
+  // Notification preferences
+  const prefRef = db.ref(`/users/${user.uid}/preferences/notifyGarageOpen`);
+  prefRef.once("value").then(snap => {
+    const checkbox = document.getElementById("notifyGarageOpen");
+    if (checkbox) checkbox.checked = !!snap.val();
+  });
+
+  const notifyCheckbox = document.getElementById("notifyGarageOpen");
+  if (notifyCheckbox) {
+    notifyCheckbox.addEventListener("change", (e) => {
+      const enabled = e.target.checked;
+      prefRef.set(enabled);
+    });
+  }
 });

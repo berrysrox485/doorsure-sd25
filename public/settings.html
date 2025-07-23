@@ -72,7 +72,24 @@ window.addEventListener('DOMContentLoaded', () => {
       console.error("Error reading g_length:", err);
       gLengthLabel.textContent = "Garage Length (error loading)";
     });
+
+    // Timeout dropdown logic
+const notifyTimeoutRef = firebase.database().ref(`/users/${user.uid}/preferences/notifyOpenTimeout`);
+const notifyOpenTimeout = document.getElementById("notifyOpenTimeout");
+
+// Load saved timeout
+notifyTimeoutRef.once("value").then(snap => {
+  notifyOpenTimeout.value = snap.val() || "0"; // default to Opt Out
+});
+
+// Save on change
+notifyOpenTimeout.addEventListener("change", (e) => {
+  notifyTimeoutRef.set(e.target.value).catch(err => {
+    console.error("Error saving timeout preference:", err);
   });
+});
+
+  }); // end of requireAuth
 });
 </script>
 
@@ -144,12 +161,12 @@ window.addEventListener('DOMContentLoaded', () => {
         <div style="margin-top: 30px; text-align: left;">
           <p>Send notification if the garage door has been opened for:</p>
           <div class="dropdown-wrapper">
-            <select class="styled-dropdown">
-              <option>Opt Out</option>
-              <option>30 Seconds</option>
-              <option>1 Minute</option>
-              <option>5 Minutes</option>
-              <option>10 Minutes</option>
+            <select class="styled-dropdown" id="notifyOpenTimeout">
+              <option value ="0">Opt Out</option>
+              <option value =".5">30 Seconds</option>
+              <option value ="1">1 Minute</option>
+              <option value ="5">5 Minutes</option>
+              <option value ="10">10 Minutes</option>
             </select>
           </div>
         </div>
